@@ -1,0 +1,47 @@
+#!/bin/sh
+#
+# $FreeBSD$
+#
+
+# PROVIDE: molly
+# REQUIRE: networking
+# KEYWORD: shutdown
+
+. /etc/rc.subr
+
+name="molly"
+desc="Gemini Protocol daemon"
+rcvar="molly_enable"
+command="/usr/local/sbin/molly-brown"
+command_args="-c /etc/molly.conf"
+molly_brown_user="daemon"
+pidfile="/var/run/${name}.pid"
+required_files="/etc/molly.conf"
+
+start_cmd="molly_start"
+stop_cmd="molly_stop"
+status_cmd="molly_status"
+
+molly_start() {
+        /usr/sbin/daemon -P ${pidfile} -r -f -u $molly_brown_user $command
+}
+
+molly_stop() {
+        if [ -e "${pidfile}" ]; then
+                kill -s TERM `cat ${pidfile}`
+        else
+                echo "${name} is not running"
+        fi
+
+}
+
+molly_status() {
+        if [ -e "${pidfile}" ]; then
+                echo "${name} is running as pid `cat ${pidfile}`"
+        else
+                echo "${name} is not running"
+        fi
+}
+
+load_rc_config $name
+run_rc_command "$1"

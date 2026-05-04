@@ -1,0 +1,59 @@
+.Dd February 2, 2025
+.Dt MOLLY-BROWN 1
+.Os All Operating Systems
+.Sh NAME
+.Nm molly-brown
+.Nd Gemini server
+.Sh SYNOPSIS
+.Nm
+.Op Fl c Ar conf_file
+.Op Fl C Ar chroot_dir
+.Op Fl u Ar username
+.Op Fl v
+.Sh DESCRIPTION
+.Nm
+is a Gemini server designed for use in shared-hosting environments, e.g.
+public-access unix or "tilde" servers.  It supports serving static content from
+filesystems or dynamic content via CGI or SCGI.  It is possible to protect
+access to certain paths (whether they map to static or dynamic constant) by
+requiring the use of pre-authorised client-certificates.
+.Pp
+The options are as follows:
+.Bl -tag -width Ds
+.It Fl c Ar conf_file
+Path to config file (default /etc/molly.conf)
+.It Fl C Ar chroot_dir
+Path to chroot directory (unix only)
+.It Fl u Ar username
+Unprivileged user (unix only)
+.It Fl v
+Print version and exit
+.El
+.Pp
+.Sh TRIVIA
+.Pp
+Margaret Brown was an American philanthropist and socialite who
+survived the sinking of the RMS Titanic, leading to a Broadway musical
+and later a film about her life being titled "The Unsinkable Molly
+Brown".  The "unsinkable" moniker inspired NASA astronaut Gus Grissom
+to name the Gemini 3 capsule he commanded "Molly Brown" - Grissom had
+almost drowned a few years earlier when his Mercury 4 capsule "Liberty
+Bell" sank after splashdown.
+.Pp
+.Sh AUTHORS
+.An Solderpunk
+.Aq Mt solderpunk@posteo.net
+.An Alex Kotov
+.Aq Mt kotovalexarian+git@causa-arcana.com
+.An kvothe
+.Aq Mt kvothe@SDF.ORG
+.An makeworld
+.Aq colecmac@protonmail.com
+.An Micheal Waltz
+.Aq Mt micheal@ecliptik.com
+.An Nicole Mazzuca
+.Aq Mt mazzucan@outlook.com
+.An Robert Miles
+.Aq Mt khuxkm@tilde.team
+.An Russ Magee
+.Aq Mt rmagee+simplyembedded@gmail.com
