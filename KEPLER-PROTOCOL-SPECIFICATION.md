@@ -89,9 +89,9 @@ LF (character 10). The augmented BNF [STD68] for this sequence is:
 ```
 request = absolute-URI last-cached-time CRLF
 
-	; absolute-URI      from [STD66]
+        ; absolute-URI      from [STD66]
         ; last-cached-time  seconds from the Unix Epoch
-	; CRLF              from [STD68]
+        ; CRLF              from [STD68]
 ```
 
 The server MUST reject requests where the URI 
@@ -145,25 +145,25 @@ reply    = input / success / redirect / tempfail / permfail / auth / unchanged
         length   = [-]*DIGIT
         updated  = [-]*DIGIT
 
-	; URI-reference from [STD66]
+        ; URI-reference from [STD66]
         ;
         ; length         integer
         ; last-updated   integer timestamp
-	;
-	; type           from [RFC2045]
-	; subtype        from [RFC2045]
-	; parameter      from [RFC2045]
-	;
-	; CRLF           from [STD68]
-	; DIGIT          from [STD68]
-	; SP             from [STD68]
-	; VCHAR          from [STD68]
-	; OCTET          from [STD68]
-	; WSP            from [STD68]
-	;
-	; UTF8-3         from [STD63]
-	; UTF8-4         from [STD63]
-	; UTF8-tail      from [STD63]
+        ;
+        ; type           from [RFC2045]
+        ; subtype        from [RFC2045]
+        ; parameter      from [RFC2045]
+        ;
+        ; CRLF           from [STD68]
+        ; DIGIT          from [STD68]
+        ; SP             from [STD68]
+        ; VCHAR          from [STD68]
+        ; OCTET          from [STD68]
+        ; WSP            from [STD68]
+        ;
+        ; UTF8-3         from [STD63]
+        ; UTF8-4         from [STD63]
+        ; UTF8-tail      from [STD63]
 ```
 
 The VCHAR rule from [STD68] is extended to include the non-control codepoints
@@ -218,8 +218,8 @@ client then makes a subsequent request for the same URI, with the user input
 included as the query portion. 
 
 ```
-	input  = "1" DIGIT SP prompt CRLF
-	prompt = 1*(SP / VCHAR)
+        input  = "1" DIGIT SP prompt CRLF
+        prompt = 1*(SP / VCHAR)
 ```
 
 For consistency, the client MUST send the last-cached field in its new request,
@@ -242,19 +242,19 @@ making the new request. For
 example, if this URI results in a 10 response:
 
 ```
-	keplers://example.net/search?hello
+        keplers://example.net/search?hello
 ```
 
 The client will send as a request:
 
 ```
-	keplers://example.net/search?the%20user%20input
+        keplers://example.net/search?the%20user%20input
 ```
 
 and not, for example:
 
 ```
-	keplers://example.net/search?hello&the%20user%20input
+        keplers://example.net/search?hello&the%20user%20input
 ```
 
 There are two status codes in this category.
@@ -280,13 +280,11 @@ content will directly follow the response header.
 success = "2" DIGIT SP length updated mimetype CRLF body
         length   = [-]*DIGIT
         updated  = [-]*DIGIT
-	mimetype = type "/" subtype *(";" parameter)
-	body     = *OCTET
+        mimetype = type "/" subtype *(";" parameter)
+        body     = *OCTET
 
         ; length         integer
         ; last-updated   integer timestamp
-        ; length         integer
-        ; last-updated   integer
 ```
 
 The 'length' field of the response indicates the size in bytes of the data to
@@ -335,7 +333,7 @@ These responses indicate that the client should retrieve the content from some
 new location, or using a different protocol. 
 
 ```
-	redirect = "3" DIGIT SP URI-reference CRLF
+        redirect = "3" DIGIT SP URI-reference CRLF
                         ; NOTE: RFC-3987 allows "" as a valid
                         ;       URI-reference.  This is not intended to
                         ;       be valid for cases of redirection.
@@ -374,7 +372,7 @@ the same request might succeed later.
 
 ```
         tempfail = "4" DIGIT [SP errormsg] CRLF
-	errormsg = 1*(SP / VCHAR)
+        errormsg = 1*(SP / VCHAR)
 ```
 
 Clients SHOULD display a localized description of the failure to the user.  The
@@ -416,8 +414,8 @@ The request has failed, and there will be no response body. The client SHOULD
 NOT retry the request in the short term, because it will probably fail again. 
 
 ```
-	permfail = "5" DIGIT [SP errormsg] CRLF
-	errormsg = 1*(SP / VCHAR)
+        permfail = "5" DIGIT [SP errormsg] CRLF
+        errormsg = 1*(SP / VCHAR)
 ```
 
 Clients SHOULD display a localized description of the failure to the user,
@@ -468,8 +466,8 @@ They indicate that the client did not provide a certificate, or provided one tha
 was inadequate in some way.
 
 ```
-	auth     = "6" DIGIT [SP errormsg] CRLF
-	errormsg = 1*(SP / VCHAR)
+        auth     = "6" DIGIT [SP errormsg] CRLF
+        errormsg = 1*(SP / VCHAR)
 ```
 
 Clients SHOULD use whatever information the server returns to advise the user of
