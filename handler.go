@@ -68,7 +68,7 @@ func handleGeminiRequest(conn net.Conn, sysConfig SysConfig, config UserConfig, 
 	}
 
 	// Read request
-	URL, updated, err := readRequest(conn, &logEntry, sysConfig)
+	URL, last_cached, language, err := readRequest(conn, &logEntry, sysConfig)
 	if err != nil {
 		return
 	}
@@ -150,7 +150,7 @@ func handleGeminiRequest(conn net.Conn, sysConfig SysConfig, config UserConfig, 
 	for _, cgiPath := range sysConfig.CGIPaths {
 		if strings.HasPrefix(path, cgiPath) {
 			handleCGI(sysConfig, path, cgiPath, URL, &logEntry, 
-                           conn, isKepler)
+                           conn, isKepler, language)
 			if logEntry.Status != 0 {
 				return
 			}
@@ -161,7 +161,7 @@ func handleGeminiRequest(conn net.Conn, sysConfig SysConfig, config UserConfig, 
 	for scgiPath, scgiSocket := range sysConfig.SCGIPaths {
 		if strings.HasPrefix(URL.Path, scgiPath) {
 			handleSCGI(URL, scgiPath, scgiSocket, sysConfig, &logEntry, 
-                          conn, isKepler)
+                          conn, isKepler, language)
 			return
 		}
 	}
@@ -225,19 +225,20 @@ func handleGeminiRequest(conn net.Conn, sysConfig SysConfig, config UserConfig, 
 
 	// Finally, serve a simple static file or directory
 	if info.IsDir() {
-		serveDirectory(URL, path, &logEntry, conn, config, sysConfig, isKepler, updated)
+		serveDirectory(URL, path, &logEntry, conn, config, sysConfig, isKepler, last_cached)
 	} else {
-		serveFile(path, info, &logEntry, conn, config, sysConfig, isKepler, updated)
+		serveFile(path, info, &logEntry, conn, config, sysConfig, isKepler, last_cached)
 	}
 }
 
-func readRequest(conn net.Conn, logEntry *LogEntry, config SysConfig) (*url.URL, int64, error) {
-        var updated int64 = -1; // Default value of updated-since-time is "unknown"
-
+func readRequest(conn net.Conn, logEntry *LogEntry, config SysConfig) (*url.URL, int64, string, error) {
+        var last_cached int64 = -1; // Default value of last_cached-since-time is "unknown"
+        var language = "";
+  
 	err := conn.SetReadDeadline(time.Now().Add(time.Duration(config.ReadTimeout) * time.Second))
 	if err != nil {
 		log.Println("Error setting read deadline: " + err.Error())
-		return nil, -1, err
+		return nil, -1, language, err
 	}
 
 	reader := bufio.NewReaderSize(conn, 1024)
@@ -246,7 +247,7 @@ func readRequest(conn net.Conn, logEntry *LogEntry, config SysConfig) (*url.URL,
 	if overflow {
 		conn.Write([]byte("59 Request too long!\r\n"))
 		logEntry.Status = 59
-		return nil, -1, errors.New("Request too long")
+		return nil, -1, language, errors.New("Request too long")
 	} else if err != nil {
 		if errors.Is(err, os.ErrDeadlineExceeded) {
 			conn.Write([]byte("40 Request timed out!\r\n"))
@@ -255,14 +256,17 @@ func readRequest(conn net.Conn, logEntry *LogEntry, config SysConfig) (*url.URL,
 			conn.Write([]byte("40 Unknown error reading request!\r\n"))
 		}
 		logEntry.Status = 40
-		return nil, -1, err
+		return nil, -1, language, err
 	}
 
         components := strings.Split (string(request), " ");
         urlPart := components[0];
         if (len(components) > 1) {
-          updated, err = strconv.ParseInt (components[1], 10, 64);
-          if (err != nil) { updated = -1; } // Should we raise an error?
+          last_cached, err = strconv.ParseInt (components[1], 10, 64);
+          if (err != nil) { last_cached = -1; } // Should we raise an error?
+        }
+        if (len(components) > 2) {
+          language = components[2]
         }
 
 	// Parse request as URL
@@ -271,7 +275,7 @@ func readRequest(conn net.Conn, logEntry *LogEntry, config SysConfig) (*url.URL,
 		log.Println("Error parsing request URL " + string(request) + ": " + err.Error())
 		conn.Write([]byte("59 Error parsing URL!\r\n"))
 		logEntry.Status = 59
-		return nil, -1, errors.New("Bad URL in request")
+		return nil, -1, language, errors.New("Bad URL in request")
 	}
 	logEntry.RequestURL = URL.String()
 
@@ -280,7 +284,7 @@ func readRequest(conn net.Conn, logEntry *LogEntry, config SysConfig) (*url.URL,
 		URL.Scheme = "gemini"
 	}
 
-	return URL, updated, nil
+	return URL, last_cached, language, nil
 }
 
 func resolvePath(path string, config SysConfig) string {
@@ -323,7 +327,7 @@ func handleRedirectsInner(URL *url.URL, redirects map[string]string, status int,
 	}
 }
 
-func serveDirectory(URL *url.URL, path string, logEntry *LogEntry, conn net.Conn, config UserConfig, sysConfig SysConfig, isKepler bool, updated int64) {
+func serveDirectory(URL *url.URL, path string, logEntry *LogEntry, conn net.Conn, config UserConfig, sysConfig SysConfig, isKepler bool, last_cached int64) {
 	// Redirect to add trailing slash if missing
 	// (otherwise relative links don't work properly)
 	if !strings.HasSuffix(URL.Path, "/") {
@@ -336,7 +340,7 @@ func serveDirectory(URL *url.URL, path string, logEntry *LogEntry, conn net.Conn
 	index_path := filepath.Join(path, "index."+config.GeminiExt)
 	index_info, err := os.Stat(index_path)
 	if err == nil && uint64(index_info.Mode().Perm())&0444 == 0444 {
-		serveFile(index_path, index_info, logEntry, conn, config, sysConfig, isKepler, updated)
+		serveFile(index_path, index_info, logEntry, conn, config, sysConfig, isKepler, last_cached)
 		// Serve a generated listing
 	} else if config.DirectoryListing {
 		listing, err := generateDirectoryListing(URL, path, config)
@@ -355,7 +359,16 @@ func serveDirectory(URL *url.URL, path string, logEntry *LogEntry, conn net.Conn
 	}
 }
 
-func serveFile(path string, info os.FileInfo, logEntry *LogEntry, conn net.Conn, config UserConfig, sysConfig SysConfig, isKepler bool, updated int64) {
+// Get a crude estimate for the expiry time of a file, from its
+//   last-updated time
+func estimateExpiry (info os.FileInfo) int64 {
+  now := time.Now()
+  elapsed := now.Unix() - info.ModTime().Unix()
+  extend := elapsed / 10 // 10% of the time the document has not chainged
+  return now.Unix() + extend
+  }
+
+func serveFile(path string, info os.FileInfo, logEntry *LogEntry, conn net.Conn, config UserConfig, sysConfig SysConfig, isKepler bool, last_cached int64) {
 	// Get MIME type of files
 	ext := filepath.Ext(path)
 	var mimeType string
@@ -375,8 +388,8 @@ func serveFile(path string, info os.FileInfo, logEntry *LogEntry, conn net.Conn,
 		}
 	}
 
-        if (isKepler && (info.ModTime().Unix() <= updated)) {
-		conn.Write([]byte("70 Not changed\r\n"))
+        if (isKepler && (info.ModTime().Unix() <= last_cached)) {
+	        conn.Write([]byte(fmt.Sprintf("70 %d\r\n", estimateExpiry (info))))
 		logEntry.Status = 70
 		return
         }
@@ -435,8 +448,8 @@ func serveFile(path string, info os.FileInfo, logEntry *LogEntry, conn net.Conn,
 
 	// Send response
         if isKepler {
-	        conn.Write([]byte(fmt.Sprintf("20 %d %d %s\r\n", info.Size(), 
-                  info.ModTime().Unix(),  mimeType)))
+	        conn.Write([]byte(fmt.Sprintf("20 %d %d %d %s\r\n", info.Size(), 
+                  info.ModTime().Unix(), estimateExpiry (info), mimeType)))
         } else {
 	        conn.Write([]byte(fmt.Sprintf("20 %s\r\n", mimeType)))
         }

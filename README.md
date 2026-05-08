@@ -9,6 +9,10 @@ server, each with its own configuration file.
 Kepler is a modest extension to the Gemini protocol, that adds just enough
 extra information to allow client-side caching.
 
+Full details of the Kepler protocol, including the specification and
+explanatory notes and diagrams, may be found in the project's
+[GitHub repository](https://github.com/kevinboone/kepler-protocol).
+
 This fork adds one entry to the configuration file: "Mode".  This entry can
 take any of the values "gemini", "kepler", and "keplers", with "gemini" being
 the default. If you do specify another protocol, you'll also have to specify an
@@ -22,9 +26,6 @@ This fork adds to the original repository:
 
 * a `samples/` directory, containing example configuration files
   for the three supported protocols
-* the document `kepler-and-gemini.md` which provides an overview of the Kepler
-  protocol; 
-* the full Kepler specification `KEPLER-PROTOCOL-SPECIFICATION.md`;
 * the document `README.kepler-support.md`, which describes in more detail
   what changes have been made to the original Molly Brown application.
 

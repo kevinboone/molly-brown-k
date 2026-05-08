@@ -45,7 +45,7 @@ func extractStatusFromDynamicResponse(reader *bufio.Reader, source string) (int,
 	return status, nil
 }
 
-func handleCGI(config SysConfig, path string, cgiPath string, URL *url.URL, logEntry *LogEntry, conn net.Conn, isKepler bool) {
+func handleCGI(config SysConfig, path string, cgiPath string, URL *url.URL, logEntry *LogEntry, conn net.Conn, isKepler bool, language string) {
 	// Find the shortest leading part of path which maps to an executable file.
 	// Call this part scriptPath, and everything after it pathInfo.
 	components := strings.Split(path, "/")
@@ -75,7 +75,7 @@ func handleCGI(config SysConfig, path string, cgiPath string, URL *url.URL, logE
 	}
 
 	// Prepare environment variables
-	vars := prepareCGIVariables(config, URL, conn, scriptPath, pathInfo, isKepler)
+	vars := prepareCGIVariables(config, URL, conn, scriptPath, pathInfo, isKepler, language)
 
 	// Spawn process
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(config.CGITimeLimit)*time.Second)
@@ -126,7 +126,7 @@ func handleCGI(config SysConfig, path string, cgiPath string, URL *url.URL, logE
 	conn.Write(response)
 }
 
-func handleSCGI(URL *url.URL, scgiPath string, scgiSocket string, config SysConfig, logEntry *LogEntry, conn net.Conn, isKepler bool) {
+func handleSCGI(URL *url.URL, scgiPath string, scgiSocket string, config SysConfig, logEntry *LogEntry, conn net.Conn, isKepler bool, language string) {
 
 	// Connect to socket
 	socket, err := net.Dial("unix", scgiSocket)
@@ -139,7 +139,7 @@ func handleSCGI(URL *url.URL, scgiPath string, scgiSocket string, config SysConf
 	defer socket.Close()
 
 	// Send variables
-	vars := prepareSCGIVariables(config, URL, scgiPath, conn, isKepler)
+	vars := prepareSCGIVariables(config, URL, scgiPath, conn, isKepler, language)
 	length := 0
 	for key, value := range vars {
 		length += len(key)
@@ -181,16 +181,16 @@ func handleSCGI(URL *url.URL, scgiPath string, scgiSocket string, config SysConf
 	}
 }
 
-func prepareCGIVariables(config SysConfig, URL *url.URL, conn net.Conn, script_path string, path_info string, isKepler bool) map[string]string {
-	vars := prepareGatewayVariables(config, URL, conn, isKepler)
+func prepareCGIVariables(config SysConfig, URL *url.URL, conn net.Conn, script_path string, path_info string, isKepler bool, language string) map[string]string {
+	vars := prepareGatewayVariables(config, URL, conn, isKepler, language)
 	vars["GATEWAY_INTERFACE"] = "CGI/1.1"
 	vars["SCRIPT_PATH"] = script_path
 	vars["PATH_INFO"] = path_info
 	return vars
 }
 
-func prepareSCGIVariables(config SysConfig, URL *url.URL, scgiPath string, conn net.Conn, isKepler bool) map[string]string {
-	vars := prepareGatewayVariables(config, URL, conn, isKepler)
+func prepareSCGIVariables(config SysConfig, URL *url.URL, scgiPath string, conn net.Conn, isKepler bool, language string) map[string]string {
+	vars := prepareGatewayVariables(config, URL, conn, isKepler, language)
 	vars["SCGI"] = "1"
 	vars["CONTENT_LENGTH"] = "0"
 	vars["SCRIPT_PATH"] = scgiPath
@@ -198,7 +198,7 @@ func prepareSCGIVariables(config SysConfig, URL *url.URL, scgiPath string, conn 
 	return vars
 }
 
-func prepareGatewayVariables(config SysConfig, URL *url.URL, conn net.Conn, isKepler bool) map[string]string {
+func prepareGatewayVariables(config SysConfig, URL *url.URL, conn net.Conn, isKepler bool, language string) map[string]string {
 	vars := make(map[string]string)
 	vars["QUERY_STRING"] = URL.RawQuery
 	vars["REQUEST_METHOD"] = ""
@@ -213,6 +213,7 @@ func prepareGatewayVariables(config SysConfig, URL *url.URL, conn net.Conn, isKe
 
 	host, _, _ := net.SplitHostPort(conn.RemoteAddr().String())
 	vars["REMOTE_ADDR"] = host
+	vars["LANGUAGE"] = language 
 
 	// Add TLS variables
 	var tlsConn (*tls.Conn) = conn.(*tls.Conn)
